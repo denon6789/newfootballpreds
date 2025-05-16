@@ -7,16 +7,29 @@ load_dotenv()
 API_KEY = os.getenv('FOOTBALL_API_KEY')
 API_BASE = 'https://api.football-data.org/v4'
 
+import datetime
+
 class ScorePredictor:
+    _teams_cache = None
+    _teams_cache_date = None
+
     def __init__(self):
         self.session = requests.Session()
         if API_KEY:
             self.session.headers.update({'X-Auth-Token': API_KEY})
 
-    def get_team_id(self, team_name):
-        # Search for team by name
+    def _refresh_teams_cache(self):
         resp = self.session.get(f'{API_BASE}/teams')
         teams = resp.json().get('teams', [])
+        ScorePredictor._teams_cache = teams
+        ScorePredictor._teams_cache_date = datetime.date.today()
+
+    def get_team_id(self, team_name):
+        # Refresh cache if not set or if it's a new day
+        if (ScorePredictor._teams_cache is None or
+            ScorePredictor._teams_cache_date != datetime.date.today()):
+            self._refresh_teams_cache()
+        teams = ScorePredictor._teams_cache
         for team in teams:
             if team_name.lower() in team['name'].lower():
                 return team['id']
